@@ -1,0 +1,14 @@
+# Mac OS X
+.DS_Store
+
+# Env
+.env
+
+# Node
+npm-debug.log
+node_modules
+package-lock.json
+yarn.lock
+
+# Sublime Text
+*.sublime-*
