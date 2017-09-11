@@ -140,9 +140,7 @@ var last = rob.lastChild;
 console.log('last: ' + last.name);
 console.log('previous = ' + last.previousSibling.name);
 
-
 var z = rob.$z;
-console.log('------------');
 console.log('Names from Br to Da');
 z.forEachChild({
   range: {
@@ -214,10 +212,12 @@ z.forEachChild({
 });
 console.log('------------');
 
-
+console.log('temp before: ' + temp.value);
 temp.value = 1234;
+console.log('temp after: ' + temp.value);
 
 temp.delete();
+console.log('temp after delete: ' + temp.value);
 
 var list = documentStore.list();
 console.log(JSON.stringify(list));

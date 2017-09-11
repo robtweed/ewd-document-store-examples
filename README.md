@@ -12,8 +12,22 @@ Google Group for discussions, support, advice etc: [http://groups.google.co.uk/g
 
 # Table of Contents
   
-  * [InterSystem Caché](#toe-intersystem-cache)
-  * [Caché Standalone Examples](#toe-cache-standalone-examples)
+  - [InterSystem Caché](#toe-intersystem-cache)
+  - [Caché Standalone Examples](#toe-cache-standalone-examples)
+    * [Creating Document Nodes](#toe-creating-document-nodes)
+    * [Updating Document Nodes](#toe-updating-document-nodes)
+    * [For Each Methods](#toe-foreach-methods)
+      * [forEachChild](#toe-foreachchild)
+      * [forEachLeafNode](#toe-foreachleafnode)
+    * [Traversing Document Nodes](#toe-traversing-document-nodes)
+      * [countChildren()](#toe-traversing-countChildren)
+      * [$()](#toe-traversing-$)
+      * [parent](#toe-traversing-parent)
+      * [firstChild / nextSibling](#toe-traversing-firstChild-nextSibling)
+      * [value](#toe-traversing-value)
+      * [delete()](#toe-traversing-delete)
+    * [Gets a List of Globals](#toe-gets-list-of-globals)
+    
   * [Caché Worker Module Example and Express Integration using ewd-qoper8-express](#toe-worker-module-example-and-express-integration-using-ewd-qoper-express)
 
 
@@ -55,6 +69,8 @@ ok: {"ok":1,"result":1,"cache_pid":"86289"}
 version: Node.js Adaptor for Cache: Version: 1.1.140 (CM); Cache Version: 2017.1 build 111
 ```
 
+### <a id="toe-creating-document-nodes"></a>Creating Document Nodes
+
 Next, initializing document store and creating a couple document nodes:
 ```js
 var documentStore = new DocumentStore(db);
@@ -76,6 +92,8 @@ hasChildren: false
 value:
 {}
 ```
+
+### <a id="toe-updating-document-nodes"></a>Updating Document Nodes
 
 Let's add event listener on `afterSet` event and set some values using `$` and `increment` methods:
 ```js
@@ -156,6 +174,10 @@ afterSet: {"documentName":"rob","path":["z","d","b"],"before":{"value":"b","exis
 }
 ```
 
+### <a id="toe-foreach-methods"></a> For Each Methods
+
+#### <a id="toe-foreachchild"></a> forEachChild
+
 Let's go through each child in rob document:
 ```js
 console.log('forEachChild through rob document:');
@@ -222,6 +244,137 @@ forPrefix through rob global starting x:
 x
 ```
 
+Let's use range option property to filter child nodes:
+```js
+var z = rob.$z;
+console.log('Names from Br to Da');
+z.forEachChild({
+  range: {
+    from: 'Br',
+    to: 'Da'
+  }
+}, function (lastName, node) {
+  console.log('LastName: ' + lastName + '; firstName: ' + node.value);
+});
+console.log('------------');
+console.log('Names from Br to Db');
+z.forEachChild({
+  range: {
+    from: 'Br',
+    to: 'Db'
+  }
+}, function (lastName, node) {
+  console.log('LastName: ' + lastName + '; firstName: ' + node.value);
+});
+console.log('------------');
+console.log('Names from Briggs to Davis');
+z.forEachChild({
+  range: {
+    from: 'Briggs',
+    to: 'Davis'
+  }
+}, function (lastName, node) {
+  console.log('LastName: ' + lastName + '; firstName: ' + node.value);
+});
+console.log('------------');
+console.log('Names from B to D');
+z.forEachChild({
+  range: {
+    from: 'B',
+    to: 'D'
+  }
+}, function (lastName, node) {
+  console.log('LastName: ' + lastName + '; firstName: ' + node.value);
+});
+console.log('------------');
+```
+Response:
+```
+Names from Br to Da
+LastName: Briggs; firstName: A
+LastName: Davies; firstName: D
+LastName: Davis; firstName: T
+------------
+Names from Br to Db
+LastName: Briggs; firstName: A
+LastName: Davies; firstName: D
+LastName: Davis; firstName: T
+------------
+Names from Briggs to Davis
+LastName: Briggs; firstName: A
+LastName: Davies; firstName: D
+LastName: Davis; firstName: T
+------------
+Names from B to D
+LastName: Barton; firstName: J
+LastName: Briggs; firstName: A
+LastName: Davies; firstName: D
+LastName: Davis; firstName: T
+LastName: Douglas; firstName: N
+```
+
+Using only `from` or `to`:
+```js
+console.log('Names from B');
+z.forEachChild({
+  range: {
+    from: 'B'
+  }
+}, function (lastName, node) {
+  console.log('LastName: ' + lastName);
+});
+console.log('------------');
+console.log('Names from D');
+z.forEachChild({
+  range: {
+    from: 'D'
+  }
+}, function (lastName, node) {
+  console.log('LastName: ' + lastName);
+});
+console.log('------------');
+console.log('Names to D');
+z.forEachChild({
+  range: {
+    to: 'D'
+  }
+}, function (lastName, node) {
+  console.log('LastName: ' + lastName);
+});
+console.log('------------');
+```
+Response:
+```
+Names from B
+LastName: Barton
+LastName: Briggs
+LastName: Davies
+LastName: Davis
+LastName: Douglas
+LastName: a
+LastName: b
+LastName: c
+LastName: d
+------------
+Names from D
+LastName: Davies
+LastName: Davis
+LastName: Douglas
+LastName: a
+LastName: b
+LastName: c
+LastName: d
+------------
+Names to D
+LastName: Barton
+LastName: Briggs
+LastName: Davies
+LastName: Davis
+LastName: Douglas
+```
+
+#### <a id="toe-foreachleafnode"></a> forEachLeafNode
+
 There is another forEach method loop through each leaf node - `forEachLeafNode`
 ```js
 console.log('forEachLeafNode through rob global:');
@@ -249,14 +402,249 @@ a
 b
 ```
 
-Wants to know children count? Let's use `countChildren`;
+### <a id="toe-traversing-document-nodes"></a> Traversing Document Nodes
+
+#### <a id="toe-traversing-countChildren"></a> countChildren
+
+Wants to know children count of document node?
 ```js
-console.log('forEachLeafNode through rob global:');
-rob.forEachLeafNode(function (value) {
-  console.log(value);
-});
+console.log('Number of children: ' + rob.countChildren());
 ```
 Response:
 ```
 Number of children: 5
+```
+
+#### <a id="toe-traversing-$"></a> $()
+
+Let's look deeper to $() function
+
+```js
+var robx = rob.$('x', true);
+console.log('robx: ' + robx.value);
+console.log(JSON.stringify(rob, null, 2));
+console.log('===============');
+console.log(JSON.stringify(robx, null, 2));
+```
+
+Response:
+```
+robx: hello
+{
+  "documentStore": {
+    "db": {},
+    "build": {
+      "no": "1.16.0",
+      "date": "7 September 2017"
+    },
+    "domain": null,
+    "_events": {},
+    "_eventsCount": 1
+  },
+  "name": "rob",
+  "isDocumentNode": true,
+  "path": [],
+  "documentName": "rob",
+  "_node": {
+    "global": "rob",
+    "subscripts": []
+  },
+  "$x": {
+    "documentStore": {
+      "db": {},
+      "build": {
+        "no": "1.16.0",
+        "date": "7 September 2017"
+      },
+      "domain": null,
+      "_events": {},
+      "_eventsCount": 1
+    },
+    "name": "x",
+    "isDocumentNode": false,
+    "path": [
+      "x"
+    ],
+    "documentName": "rob",
+    "_node": {
+      "global": "rob",
+      "subscripts": [
+        "x"
+      ],
+      "data": "hello"
+    }
+  },
+  "$y": {
+    "documentStore": {
+      "db": {},
+      "build": {
+        "no": "1.16.0",
+        "date": "7 September 2017"
+      },
+      "domain": null,
+      "_events": {},
+      "_eventsCount": 1
+    },
+    "name": "y",
+    "isDocumentNode": false,
+    "path": [
+      "y"
+    ],
+    "documentName": "rob",
+    "_node": {
+      "global": "rob",
+      "subscripts": [
+        "y"
+      ],
+      "data": "world"
+    }
+  },
+  "$a": {
+    "documentStore": {
+      "db": {},
+      "build": {
+        "no": "1.16.0",
+        "date": "7 September 2017"
+      },
+      "domain": null,
+      "_events": {},
+      "_eventsCount": 1
+    },
+    "name": "a",
+    "isDocumentNode": false,
+    "path": [
+      "a"
+    ],
+    "documentName": "rob",
+    "_node": {
+      "global": "rob",
+      "subscripts": [
+        "a"
+      ],
+      "data": 0
+    }
+  },
+  "$z": {
+    "documentStore": {
+      "db": {},
+      "build": {
+        "no": "1.16.0",
+        "date": "7 September 2017"
+      },
+      "domain": null,
+      "_events": {},
+      "_eventsCount": 1
+    },
+    "name": "z",
+    "isDocumentNode": false,
+    "path": [
+      "z"
+    ],
+    "documentName": "rob",
+    "_node": {
+      "global": "rob",
+      "subscripts": [
+        "z"
+      ]
+    }
+  }
+}
+===============
+{
+  "documentStore": {
+    "db": {},
+    "build": {
+      "no": "1.16.0",
+      "date": "7 September 2017"
+    },
+    "domain": null,
+    "_events": {},
+    "_eventsCount": 1
+  },
+  "name": "x",
+  "isDocumentNode": false,
+  "path": [
+    "x"
+  ],
+  "documentName": "rob",
+  "_node": {
+    "global": "rob",
+    "subscripts": [
+      "x"
+    ],
+    "data": "hello"
+  }
+}
+```
+
+### <a id="toe-traversing-parent"></a> parent
+
+```js
+var roby = rob.$x.$('y');
+console.log('parent: ' + roby.parent.value);
+```
+Response:
+```
+parent: hello
+```
+
+#### <a id="toe-traversing-firstChild-nextSibling"></a> firstChild / nextSibling
+
+```js
+var first = rob.firstChild;
+console.log('first: ' + first.name);
+console.log('next = ' + first.nextSibling.name);
+```
+Response:
+```
+first: a
+next = x
+```
+
+#### <a id="toe-traversing-lastChild-previousSibling"></a> lastChild / previousSibling
+
+```js
+var last = rob.lastChild;
+console.log('last: ' + last.name);
+console.log('previous = ' + last.previousSibling.name);
+```
+Response:
+```
+last: z
+previous = y
+```
+
+#### <a id="toe-traversing-value"></a> value
+
+```js
+console.log('temp before: ' + temp.value);
+temp.value = 1234;
+console.log('temp after: ' + temp.value);
+```
+Response:
+```
+temp before:
+temp after: 1234
+```
+
+#### <a id="toe-traversing-delete"></a> delete
+
+```js
+temp.delete()
+console.log('temp after delete: ' + temp.value);
+```
+Response:
+```
+temp after delete:
+```
+
+### <a id="toe-gets-list-of-globals"></a> Gets a List of Globals
+
+```js
+var list = documentStore.list();
+console.log(JSON.stringify(list));
+```
+Response:
+```
+["rob","temp"]
 ```
