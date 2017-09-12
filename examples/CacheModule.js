@@ -31,12 +31,16 @@
 
 // ewd-qoper8 Worker Module example which connects to a Cache database
 
+'use strict';
+
+var DocumentStore = require('ewd-document-store');
+var Cache = require('cache').Cache;
+
 module.exports = function () {
 
   this.on('start', function (isFirst) {
     // establish the connection to Cache database
-    var DocumentStore = require('ewd-document-store');
-    var Cache = require('cache').Cache;
+
     this.db = new Cache();
 
     var ok = this.db.open({
@@ -63,7 +67,6 @@ module.exports = function () {
   });
 
   this.on('message', function(messageObj, send, finished) {
-
     // For example - save every incoming message object to the requests global
     var glob = new this.documentStore.DocumentNode('requests', [process.pid]);
     var ix = glob.increment();

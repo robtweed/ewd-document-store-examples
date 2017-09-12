@@ -27,9 +27,10 @@ Google Group for discussions, support, advice etc: [http://groups.google.co.uk/g
       * [value](#toe-traversing-value)
       * [delete()](#toe-traversing-delete)
     * [Gets a List of Globals](#toe-gets-list-of-globals)
-    
   * [Caché Worker Module Example and Express Integration using ewd-qoper8-express](#toe-worker-module-example-and-express-integration-using-ewd-qoper-express)
+    * [Using WebSockets](#toe-using-websockets)
 
+------
 
 ## <a id="toe-cache"></a>InterSystem Caché
 
@@ -647,4 +648,163 @@ console.log(JSON.stringify(list));
 Response:
 ```
 ["rob","temp"]
+```
+
+## <a id="toe-worker-module-example-and-express-integration-using-ewd-qoper-express"></a>Caché Worker Module Example and Express Integration using ewd-qoper8-express
+
+Here's an example of ewd-document-store integrating with [ewd-qoper8-express](https://github.com/robtweed/ewd-qoper8-express) and [ewd-qoper8](https://github.com/robtweed/ewd-qoper8). You'll find this in the /examples directory - look for CacheExpress.js and CacheModule.js:
+
+CacheExpress.js
+
+```js
+var express = require('express');
+var bodyParser = require('body-parser');
+var qoper8 = require('ewd-qoper8');
+var qx = require('ewd-qoper8-express');
+
+var app = express();
+app.use(bodyParser.json());
+
+var q = new qoper8.masterProcess();
+qx.init(q);
+
+app.post('/qoper8', function (req, res) {
+  q.handleMessage(req.body, function (resultObj) {
+    delete resultObj.finished;
+    res.send(resultObj);
+  });
+});
+
+app.get('/', function (req, res) {
+  res.sendFile(__dirname + '/index.html');
+});
+
+q.on('start', function () {
+  this.worker.module = process.cwd() + '/examples/CacheModule';
+});
+
+q.on('started', function () {
+  var server = app.listen(8080, function () {
+    var host = server.address().address;
+    var port = server.address().port;
+
+    console.log('EWD-Express listening at http://%s:%s', host, port);
+    console.log('__dirname = ' + __dirname);
+  });
+
+  var io = require('socket.io')(server);
+  io.on('connection', function (socket) {
+    socket.on('my-request', function (data) {
+      q.handleMessage(data, function (resultObj) {
+        delete resultObj.finished;
+        socket.emit('my-response', resultObj);
+      });
+    });
+  });
+});
+
+q.start();
+```
+
+CacheModule.js:
+```js
+var DocumentStore = require('ewd-document-store');
+var Cache = require('cache').Cache;
+
+module.exports = function () {
+
+  this.on('start', function (isFirst) {
+    // establish the connection to Cache database
+
+    this.db = new Cache();
+
+    var ok = this.db.open({
+      path: process.env.CACHE_MGR_PATH || '/opt/cache/mgr',
+      username: process.env.CACHE_USERNAME || '_SYSTEM',
+      password: process.env.CACHE_PASSWORD || 'SYS',
+      namespace: process.env.CACHE_NAMESPACE || 'USER'
+    });
+
+    console.log('ok: ' + JSON.stringify(ok));
+
+    this.documentStore = new DocumentStore(this.db);
+
+    // Example of handler for the afterSet event which is fired every time a GlobalNode value changes:
+    this.documentStore.on('afterSet', function (node) {
+      console.log('afterSet: ' + JSON.stringify(node));
+    });
+
+    //  Clear down the requests global when ewd-qoper8 first started:
+    if (isFirst) {
+      var glob = new this.documentStore.DocumentNode('requests');
+      glob.delete();
+    }
+  });
+
+  this.on('message', function(messageObj, send, finished) {
+
+    // For example - save every incoming message object to the requests global
+    var glob = new this.documentStore.DocumentNode('requests', [process.pid]);
+    var ix = glob.increment();
+
+    glob.$(ix).setDocument(messageObj);
+
+    var results = {
+      hello: 'from worker ' + process.pid,
+      time: new Date().toString(),
+      message: messageObj
+    };
+    finished(results);
+  });
+
+  this.on('stop', function() {
+    // Make sure the connection to Cache is closed before the child process closes;
+    console.log('Worker ' + process.pid + ' closing database');
+    this.db.close();
+  });
+};
+```
+
+Let's this example: `$ node examples/CacheExpress.js`
+
+> Note: You may need to run this as sudo due to Cache permissions
+
+    
+    curl -X POST http:/127.0.0.1:8080/qoper8
+    
+Response:
+```
+{
+  "message": {
+    "hello": "from worker 48900",
+    "time": "Tue Sep 12 2017 13:38:18 GMT+0000 (GMT)",
+    "message": {}
+  }
+}
+```
+
+### <a id="toe-using-websockets"></a>Using WebSockets
+
+In order to test this example, you need to load an HTML file - there's one already created in the /examples folder (index.html). If you start the example above and put the following URL into a browser: <http://127.0.0.1:8080/> (change the IP address as appropriate), it should load the index.html page. This loads the client-side socket.io library and otherwise just contains a button that contains the text "Click Me”
+
+When the button is clicked it will send a web socket message to Express/socket.io, and will show the returned response web socket message in the browser's Javascript console. It should look something like this:
+```json
+ewd-qoper8 message received: {
+  "type": "testSocketRequest",
+  "message": {
+    "youSent": {
+      "type": "testSocketRequest",
+      "hello": "world"
+    },
+    "workerSent": "hello from worker 13912",
+    "time": "Wed Mar 02 2016 09:04:38 GMT+0000 (GMT)"
+  }
+}
+```
+In the same time, you may see the following in console output:
+```
+afterSet: {"documentName":"requests","path":[50622],"before":{"value":"","exists":false},"value":"1"}
+afterSet: {"documentName":"requests","path":[50622,"1","type"],"before":{"value":"","exists":false},"value":"testSocketRequest"}
+afterSet: {"documentName":"requests","path":[50622,"1","hello"],"before":{"value":"","exists":false},"value":"world"}
+Tue, 12 Sep 2017 10:55:11 GMT; master process received response from worker 50622: {"type":"testSocketRequest","finished":true,"message":{"hello":"from worker 50622","time":"Tue Sep 12 2017 13:55:11 GMT+0000 (GMT)","message":{"type":"testSocketRequest","hello":"world"}}}
 ```

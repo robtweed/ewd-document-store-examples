@@ -33,8 +33,12 @@
 // worker process to the Cache database, intergrated with Express
 
 // Start using:
-// $ node node_modules/ewd-globals/lib/tests/CacheExpress1
+// $ node examples/CacheExpress.js
 // You may need to run this as sudo due to Cache permissions
+
+'use strict';
+
+require('dotenv').config();
 
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -59,9 +63,7 @@ app.get('/', function (req, res) {
 });
 
 q.on('start', function () {
-  // Worker processes will load the CacheModule.js module:
   this.worker.module = process.cwd() + '/examples/CacheModule';
-  this.setWorkerIdleLimit(300000); // optional
 });
 
 q.on('started', function () {
@@ -76,7 +78,7 @@ q.on('started', function () {
   var io = require('socket.io')(server);
   io.on('connection', function (socket) {
     socket.on('my-request', function (data) {
-      qx.handleMessage(data, function (resultObj) {
+      q.handleMessage(data, function (resultObj) {
         delete resultObj.finished;
         socket.emit('my-response', resultObj);
       });
